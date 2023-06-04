@@ -1,7 +1,11 @@
-from django.contrib import admin
-from django.urls import path , include
+
+from django.urls import path
 from . import views
-app_name='account'
+
+
+app_name = 'account'
 urlpatterns = [
-    path('' , views.profile ,name='profile')
+    path('<id>', views.profile, name='profile'),
+    path('login/', views.login, name='login'),
+    path('logout/', views.logout, name='logout'),
 ]

@@ -66,6 +66,7 @@ def login(request):
 
 def logout(request, user_id):
     cursor = connection.cursor()
+    page_number=1
     cursor.execute(
         'SELECT * FROM account_user WHERE id=%s', [user_id])
     user = dictfetchall(cursor)[0]
@@ -73,7 +74,7 @@ def logout(request, user_id):
         'UPDATE account_user SET is_authenticated=0 WHERE id=%s', [user['id']])
     transaction.commit()
     messages.success(request, 'logged out successfully', 'success')
-    return HttpResponseRedirect(reverse("book:home", args=[user['id']]))
+    return HttpResponseRedirect(reverse("book:home", args=[page_number]))
 
 
 def profile(request, id):

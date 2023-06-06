@@ -1,5 +1,31 @@
-{% extends 'base.html' %} {% load static %} {% block content %}
-
+{% extends 'base.html' %} {% load static %} {% block categ %}
+<li class="nav-item dropdown">
+  <a
+    class="nav-link dropdown-toggle"
+    href="#"
+    id="navbarDropdown"
+    role="button"
+    data-toggle="dropdown"
+    aria-haspopup="true"
+    aria-expanded="false"
+  >
+    Categories
+  </a>
+  <div class="dropdown-menu" aria-labelledby="navbarDropdown">
+    {% for category in categories %} {% if current_user %}
+    <a
+      class="dropdown-item"
+      href="{% url 'book:categories' name=category.name id=current_user.id %}"
+      >{{ category.name }}
+    </a>
+    {% else %}
+    <a class="dropdown-item" href="{% url 'book:categories' category.name %}"
+      >{{ category.name }}
+    </a>
+    {% endif %} {% endfor %}
+  </div>
+</li>
+{% endblock %} {% block content %}
 <div class="container">
   <h2 class="mt-3">All Books</h2>
   <hr />
@@ -9,7 +35,7 @@
       <div class="card">
         <img
           class="card-img-top"
-          src="{% static 'uploads/{{book.thumbnail}}' %}"
+          src="/media/{{ book.thumbnail }}"
           width="300"
           height="250"
           alt="Card image cap"
@@ -18,11 +44,19 @@
           <h6 class="card-title text-primary">{{ book.title }}</h6>
           <p class="card-text">{{ book.description }}</p>
           <hr />
+          {% if current_user %}
           <a
-            href="{% url 'book:single' id=book.id %}"
+            href="{% url 'book:single' book_id=book.id user_id=current_user.id  %}"
             class="btn btn-outline-warning"
             >More Info</a
           >
+          {% else %}
+          <a
+            href="{% url 'book:single' book.id %}"
+            class="btn btn-outline-warning"
+            >More Info</a
+          >
+          {% endif %}
         </div>
         <div class="card-footer">
           <b>Quantity:<span class="pl-3">{{ book.quantity }}</span></b>

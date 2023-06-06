@@ -18,7 +18,7 @@ def dictfetchall(cursor):
 
 def register(request):
     cursor = connection.cursor()
-
+    page_number=1
     if request.method == 'POST':
         form = UserRegistrationForm(request.POST)
         if form.is_valid():
@@ -29,7 +29,8 @@ def register(request):
             transaction.commit()
             messages.success(
                 request, 'user registered successfully', 'success')
-            return redirect('book:home')
+            
+            return HttpResponseRedirect(reverse("book:home", args=[page_number]))
     else:
         form = UserRegistrationForm()
     return render(request, 'register.html', {'form': form})
@@ -37,6 +38,7 @@ def register(request):
 
 def login(request):
     cursor = connection.cursor()
+    page_number=1
     if request.method == 'POST':
         form = UserLoginForm(request.POST)
         if form.is_valid():
@@ -49,7 +51,7 @@ def login(request):
                     'UPDATE account_user SET is_authenticated=1 WHERE id=%s', [user['id']])
                 transaction.commit()
                 messages.success(request, 'logged in successfully', 'success')
-                return HttpResponseRedirect(reverse("book:home", args=[user['id']]))
+                return HttpResponseRedirect(reverse("book:home", args=[user['id'],page_number]))
             else:
                 messages.error(
                     request, 'username or password is wrong', 'danger')
@@ -67,7 +69,7 @@ def logout(request, user_id):
         'UPDATE account_user SET is_authenticated=0 WHERE id=%s', [user['id']])
     transaction.commit()
     messages.success(request, 'logged out successfully', 'success')
-    return redirect('book:home')
+    return HttpResponseRedirect(reverse("book:home", args=[page_number]))
 
 
 def profile(request, id):
@@ -251,7 +253,7 @@ def all_users(request, user_id, del_id=None):
         cursor.execute('DELETE  FROM account_user WHERE id=%s', [del_id])
         transaction.commit()
         messages.success(request, 'The user deleted successfuly.', 'success')
-        return HttpResponseRedirect(reverse("account:profile", args=[user_id]))
+        return HttpResponseRedirect(reverse("account:all_users", args=[user_id]))
 
     return render(request, 'user_list.html', context)
 
@@ -270,7 +272,7 @@ def add_user(request, user_id):
             transaction.commit()
             messages.success(
                 request, 'user registered successfully', 'success')
-            return HttpResponseRedirect(reverse("account:profile", args=[user_id]))
+            return HttpResponseRedirect(reverse("account:all_users", args=[user_id]))
     else:
         form = UserRegistrationForm()
     return render(request, 'add_user.html', {'form': form, 'current_user': current_user})
@@ -288,7 +290,7 @@ def add_book(request, user_id):
                        (title, category_id, description,author,quantity,thumbnail) VALUES (%s,%s,%s,%s,%s,'')''', [cd['title'], cd['category'].id, cd['description'], cd['author'], cd['quantity']])
             transaction.commit()
             messages.success(request, 'Book added successfully', 'success')
-            return HttpResponseRedirect(reverse("account:profile", args=[user_id]))
+            return HttpResponseRedirect(reverse("account:all_books", args=[user_id]))
     else:
         form = AddBook()
     return render(request, 'add_book.html', {'form': form, 'current_user': current_user})
@@ -306,6 +308,13 @@ def book_edit(request, user_id, book_id):
     cursor.execute(
         'SELECT * FROM book_bookinstance WHERE book_id=%s', [book_id])
     borowers = dictfetchall(cursor)
+    result = []
+
+    for ub in borowers:
+        if (ub['book_id'] == book['id']):
+            index = {
+                'username': current_user['username'], 'email': current_user['email']}
+            result.append(index)
 
     cursor.execute('SELECT * FROM book_category')
     categories = dictfetchall(cursor)
@@ -323,11 +332,11 @@ def book_edit(request, user_id, book_id):
                                                                                                                                           cd['description'], cd['author'], cd['quantity'], image, book_id])
             transaction.commit()
             messages.success(request, 'Book edited successfully', 'success')
-            return HttpResponseRedirect(reverse("account:profile", args=[user_id]))
+            return HttpResponseRedirect(reverse("account:all_books", args=[user_id]))
     else:
         form = EditBook(instance=bookORM)
         book_form = BookImage()
-    return render(request, 'book_edit.html', {'form': form, 'book_form': book_form, 'current_user': current_user, 'borowers': borowers, 'categories': categories, 'book': book})
+    return render(request, 'book_edit.html', {'form': form, 'book_form': book_form, 'current_user': current_user, 'borrowers': result, 'categories': categories, 'book': book})
 
 
 def add_category(request, user_id):
@@ -342,7 +351,7 @@ def add_category(request, user_id):
                        (name) VALUES (%s)''', [name])
         transaction.commit()
         messages.success(request, 'Category added successfully', 'success')
-        return HttpResponseRedirect(reverse("account:profile", args=[user_id]))
+        return HttpResponseRedirect(reverse("account:add_category", args=[user_id]))
     return render(request, 'add_category.html', {'current_user': current_user})
 
 

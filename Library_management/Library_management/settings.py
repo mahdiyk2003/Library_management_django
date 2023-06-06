@@ -83,7 +83,7 @@ DATABASES = {
         'ENGINE': 'mysql.connector.django',
         'NAME': 'book',
         'USER': 'root',
-        'PASSWORD': 'qsczse2003',
+        'PASSWORD': 'root',
         'HOST': '127.0.0.1',
         'PORT': '3306',
     }

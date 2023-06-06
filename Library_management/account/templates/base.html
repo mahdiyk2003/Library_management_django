@@ -18,11 +18,11 @@
   <body>
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
       {% if current_user %}
-      <a class="navbar-brand" href="{% url 'book:home' current_user.id %}"
+      <a class="navbar-brand" href="{% url 'book:home' id=current_user.id page_number=1 %}"
         >Library</a
       >
       {% else %}
-      <a class="navbar-brand" href="{% url 'book:home' %}">Library</a>
+      <a class="navbar-brand" href="{% url 'book:home' page_number=1 %}">Library</a>
       {% endif %}
       <button
         class="navbar-toggler"
@@ -39,7 +39,7 @@
       <div class="collapse navbar-collapse" id="navbarSupportedContent">
         <ul class="navbar-nav mr-auto">
           {% block categ %} {% endblock %} {% if current_user %}
-          <form action="{% url 'book:search' current_user.id %}" method="get">
+          <form action="{% url 'book:search' id=current_user.id page_number=1 %}" method="get">
             <li class="nav-item d-flex">
               <input
                 class="form-control mr-sm-2"
@@ -54,7 +54,7 @@
             </li>
           </form>
           {% else %}
-          <form action="{% url 'book:search' %}" method="get">
+          <form action="{% url 'book:search' page_number=1 %}" method="get">
             <li class="nav-item d-flex">
               <input
                 class="form-control mr-sm-2"

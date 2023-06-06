@@ -1,4 +1,3 @@
-
 import datetime
 from django.http import HttpResponseRedirect
 from django.shortcuts import get_object_or_404, render, redirect
@@ -6,6 +5,7 @@ from django.urls import reverse
 from account import models as accountModels
 from django.db import connection, transaction
 from . import models
+from django.core.paginator import Paginator
 
 
 def dictfetchall(cursor):
@@ -14,32 +14,44 @@ def dictfetchall(cursor):
     return [dict(zip(columns, row)) for row in cursor.fetchall()]
 
 
-def home(request, id=None):
+def home(request, id=None, page_number=1):
 
     cursor = connection.cursor()
 
     cursor.execute('SELECT * FROM book_book')
 
-    books = dictfetchall(cursor)
+    books = Paginator(dictfetchall(cursor), 6)
 
     cursor.execute('SELECT * FROM book_category')
 
     categories = dictfetchall(cursor)
 
+    prev_num = int(page_number)-1
+    next_num = int(page_number)+1
+
     if id:
         cursor.execute('SELECT * FROM account_user WHERE id=%s', [id])
 
         current_user = dictfetchall(cursor)[0]
+
         context = {
-            'books': books,
+            'books': books.page(page_number).object_list,
             'current_user': current_user,
-            'categories': categories
+            'categories': categories,
+            'page_number': page_number,
+            'prev_num': prev_num,
+            'next_num': next_num
+
 
         }
     else:
         context = {
-            'books': books,
-            'categories': categories
+            'books': books.page(page_number).object_list,
+            'categories': categories,
+            'page_number': page_number,
+            'prev_num': prev_num,
+            'next_num': next_num
+
         }
 
     return render(request, 'home.html', context=context)
@@ -140,7 +152,7 @@ def return_back(request, book_id, user_id):
         return HttpResponseRedirect(reverse("book:single", kwargs={'user_id': user_id, 'book_id': book_id}))
 
 
-def search(request, id=None):
+def search(request, id=None, page_number=1):
 
     cursor = connection.cursor()
     cursor.execute('SELECT * FROM book_book')
@@ -153,47 +165,67 @@ def search(request, id=None):
             if search_input.lower() in book['title'].lower() or search_input.lower() in book['description'].lower() or search_input.lower() in book['author'].lower():
                 list_books.append(book)
 
+    temp_book = Paginator(list_books, 6)
+
+    prev_num = int(page_number)-1
+    next_num = int(page_number)+1
+
     if id:
         cursor.execute('SELECT * FROM account_user WHERE id=%s', [id])
         current_user = dictfetchall(cursor)[0]
         context = {
             'search_input': search_input,
             'current_user': current_user,
-            'books': list_books
+            'books': temp_book.page(page_number).object_list,
+            'page_number': page_number,
+            'prev_num': prev_num,
+            'next_num': next_num
         }
     else:
         context = {
             'search_input': search_input,
-            'books': list_books
+            'books': temp_book.page(page_number).object_list,
+            'page_number': page_number,
+            'prev_num': prev_num,
+            'next_num': next_num
         }
     return render(request, 'search.html', context)
 
 
-def categories(request, name, id=None):
+def categories(request, name, id=None, page_number=1):
 
     cursor = connection.cursor()
     cursor.execute('SELECT * FROM book_category where name=%s', [name])
 
     categ = dictfetchall(cursor)[0]
-    print(categ)
 
     cursor.execute(
         'SELECT * FROM book_book where category_id=%s', [categ['id']])
 
-    books = dictfetchall(cursor)
+    books = Paginator(dictfetchall(cursor), 6)
 
+    prev_num = int(page_number)-1
+    next_num = int(page_number)+1
     if id:
         cursor.execute('SELECT * FROM account_user WHERE id=%s', [id])
         current_user = dictfetchall(cursor)[0]
         context = {
             'current_user': current_user,
-            'books': books,
-            'name': name
+            'books': books.page(page_number).object_list,
+            'name': name,
+            'page_number': page_number,
+            'prev_num': prev_num,
+            'next_num': next_num
+
         }
     else:
         context = {
-            'books': books,
-            'name': name
+            'books': books.page(page_number).object_list,
+            'name': name,
+            'page_number': page_number,
+            'prev_num': prev_num,
+            'next_num': next_num
+
         }
 
     return render(request, 'categories.html', context)

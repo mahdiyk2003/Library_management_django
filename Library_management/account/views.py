@@ -18,7 +18,7 @@ def dictfetchall(cursor):
 
 def register(request):
     cursor = connection.cursor()
-
+    page_number = 1
     if request.method == 'POST':
         form = UserRegistrationForm(request.POST)
         if form.is_valid():
@@ -29,7 +29,8 @@ def register(request):
             transaction.commit()
             messages.success(
                 request, 'user registered successfully', 'success')
-            return redirect('book:home')
+
+            return HttpResponseRedirect(reverse("book:home", args=[page_number]))
     else:
         form = UserRegistrationForm()
     return render(request, 'register.html', {'form': form})
@@ -37,22 +38,27 @@ def register(request):
 
 def login(request):
     cursor = connection.cursor()
+    page_number = 1
     if request.method == 'POST':
         form = UserLoginForm(request.POST)
         if form.is_valid():
             cd = form.cleaned_data
             cursor.execute(
                 'SELECT * FROM account_user WHERE email=%s', [cd['email']])
-            user = dictfetchall(cursor)[0]
+            try:
+                user = dictfetchall(cursor)[0]
+            except:
+                user = None
             if user is not None and decrypt(user['password']) == cd['password']:
                 cursor.execute(
                     'UPDATE account_user SET is_authenticated=1 WHERE id=%s', [user['id']])
                 transaction.commit()
                 messages.success(request, 'logged in successfully', 'success')
-                return HttpResponseRedirect(reverse("book:home", args=[user['id']]))
+                return HttpResponseRedirect(reverse("book:home", args=[user['id'], page_number]))
             else:
                 messages.error(
                     request, 'username or password is wrong', 'danger')
+                return HttpResponseRedirect(reverse("account:login", args=[]))
     else:
         form = UserLoginForm()
     return render(request, 'login.html', {'form': form})
@@ -67,7 +73,7 @@ def logout(request, user_id):
         'UPDATE account_user SET is_authenticated=0 WHERE id=%s', [user['id']])
     transaction.commit()
     messages.success(request, 'logged out successfully', 'success')
-    return redirect('book:home')
+    return HttpResponseRedirect(reverse("book:home", args=[user['id']]))
 
 
 def profile(request, id):
@@ -145,7 +151,6 @@ def edit(request, id):
     user = dictfetchall(cursor)[0]
     if request.method == 'POST':
         form = EditUserProfileForm(request.POST)
-
         if form.is_valid():
             cd = form.cleaned_data
             cursor.execute(
@@ -242,13 +247,20 @@ def all_users(request, user_id, del_id=None):
     users = dictfetchall(cursor)
     cursor.execute('SELECT * FROM account_user WHERE id=%s', [user_id])
     current_user = dictfetchall(cursor)[0]
+
+    cursor.execute('SELECT * FROM book_bookinstance')
+    books_insts = dictfetchall(cursor)
+
     context = {
         'current_user': current_user,
         'users': users
     }
     if request.method == 'POST':
-        cursor.execute('SELECT * FROM account_user WHERE id=%s', [del_id])
-        user = dictfetchall(cursor)
+        for book_inst in books_insts:
+            if book_inst['borrower_id'] == int(del_id):
+                cursor.execute(
+                    'DELETE FROM book_bookinstance WHERE borrower_id=%s', [del_id])
+                transaction.commit()
         cursor.execute('DELETE  FROM account_user WHERE id=%s', [del_id])
         transaction.commit()
         messages.success(request, 'The user deleted successfuly.', 'success')
@@ -271,7 +283,7 @@ def add_user(request, user_id):
             transaction.commit()
             messages.success(
                 request, 'user registered successfully', 'success')
-            return HttpResponseRedirect(reverse("account:profile", args=[user_id]))
+            return HttpResponseRedirect(reverse("account:all_users", args=[user_id]))
     else:
         form = UserRegistrationForm()
     return render(request, 'add_user.html', {'form': form, 'current_user': current_user})
@@ -281,25 +293,18 @@ def add_book(request, user_id):
     cursor = connection.cursor()
     cursor.execute('SELECT * FROM account_user WHERE id=%s', [user_id])
     current_user = dictfetchall(cursor)[0]
-    img_form = None
     if request.method == 'POST':
         form = AddBook(request.POST)
-        img_form = BookImage(request.POST, request.FILES)
-        if form.is_valid() and img_form.is_valid():
+        if form.is_valid():
             cd = form.cleaned_data
-            img = img_form.cleaned_data.get("image_file")
-            image = f'uploads/{img.name}'
             cursor.execute('''INSERT INTO book_book
-                       (title, category_id, description,author,quantity,thumbnail) VALUES (%s,%s,%s,%s,%s,%s)''', [cd['title'], cd['category'].id, cd['description'], cd['author'], cd['quantity'], image])
+                       (title, category_id, description,author,quantity,thumbnail) VALUES (%s,%s,%s,%s,%s,'')''', [cd['title'], cd['category'].id, cd['description'], cd['author'], cd['quantity']])
             transaction.commit()
             messages.success(request, 'Book added successfully', 'success')
             return HttpResponseRedirect(reverse("account:all_books", args=[user_id]))
     else:
         form = AddBook()
-
-    context = {'form': form, 'img_form': img_form,
-               'current_user': current_user}
-    return render(request, 'add_book.html', context)
+    return render(request, 'add_book.html', {'form': form, 'current_user': current_user})
 
 
 def book_edit(request, user_id, book_id):
@@ -314,7 +319,6 @@ def book_edit(request, user_id, book_id):
     cursor.execute(
         'SELECT * FROM book_bookinstance WHERE book_id=%s', [book_id])
     borowers = dictfetchall(cursor)
-
     result = []
 
     for ub in borowers:
@@ -358,7 +362,7 @@ def add_category(request, user_id):
                        (name) VALUES (%s)''', [name])
         transaction.commit()
         messages.success(request, 'Category added successfully', 'success')
-        return HttpResponseRedirect(reverse("account:add_category   ", args=[user_id]))
+        return HttpResponseRedirect(reverse("account:add_category", args=[user_id]))
     return render(request, 'add_category.html', {'current_user': current_user})
 
 

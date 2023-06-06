@@ -18,11 +18,15 @@
   <body>
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
       {% if current_user %}
-      <a class="navbar-brand" href="{% url 'book:home' current_user.id %}"
+      <a
+        class="navbar-brand"
+        href="{% url 'book:home' id=current_user.id  page_number=1 %}"
         >Library</a
       >
       {% else %}
-      <a class="navbar-brand" href="{% url 'book:home' %}">Library</a>
+      <a class="navbar-brand" href="{% url 'book:home' page_number=1 %}"
+        >Library</a
+      >
       {% endif %}
       <button
         class="navbar-toggler"

@@ -236,15 +236,20 @@ def all_books(request, user_id, book_id=None):
 
 
 def all_users(request, user_id, del_id=None):
-    users = User.objects.all()
-    current_user = get_object_or_404(User, id=user_id)
+    cursor = connection.cursor()
+    cursor.execute('SELECT * FROM account_user')
+    users = dictfetchall(cursor)
+    cursor.execute('SELECT * FROM account_user WHERE id=%s', [user_id])
+    current_user = dictfetchall(cursor)[0]
     context = {
         'current_user': current_user,
         'users': users
     }
     if request.method == 'POST':
-        user = User.objects.get(id=del_id)
-        user.delete()
+        cursor.execute('SELECT * FROM account_user WHERE id=%s', [del_id])
+        user = dictfetchall(cursor)
+        cursor.execute('DELETE  FROM account_user WHERE id=%s', [del_id])
+        transaction.commit()
         messages.success(request, 'The user deleted successfuly.', 'success')
         return HttpResponseRedirect(reverse("account:profile", args=[user_id]))
 
@@ -252,14 +257,17 @@ def all_users(request, user_id, del_id=None):
 
 
 def add_user(request, user_id):
-    current_user = get_object_or_404(User, id=user_id)
+    cursor = connection.cursor()
+    cursor.execute('SELECT * FROM account_user WHERE id=%s', [user_id])
+    current_user = dictfetchall(cursor)[0]
     if request.method == 'POST':
         form = UserRegistrationForm(request.POST)
         if form.is_valid():
             cd = form.cleaned_data
-            user = User(email=cd['email'], username=cd['username'],
-                        password=encrypt(cd['password1']))
-            user.save()
+            cursor.execute('''INSERT INTO account_user
+                       (username, email, password,image_file,is_admin,is_authenticated) VALUES (%s,%s,%s,%s,0,0)''', [cd['username'], cd['email'], encrypt(cd['password1']), 'uploads/images.png'])
+
+            transaction.commit()
             messages.success(
                 request, 'user registered successfully', 'success')
             return HttpResponseRedirect(reverse("account:profile", args=[user_id]))
@@ -269,14 +277,16 @@ def add_user(request, user_id):
 
 
 def add_book(request, user_id):
-    current_user = get_object_or_404(User, id=user_id)
+    cursor = connection.cursor()
+    cursor.execute('SELECT * FROM account_user WHERE id=%s', [user_id])
+    current_user = dictfetchall(cursor)[0]
     if request.method == 'POST':
         form = AddBook(request.POST)
         if form.is_valid():
             cd = form.cleaned_data
-            book = bModels.Book(title=cd['title'], category=cd['category'], description=cd['description'],
-                                author=cd['author'], quantity=cd['quantity'], thumbnail=cd['thumbnail'])
-            book.save()
+            cursor.execute('''INSERT INTO book_book
+                       (title, category_id, description,author,quantity,thumbnail) VALUES (%s,%s,%s,%s,%s,'')''', [cd['title'], cd['category'].id, cd['description'], cd['author'], cd['quantity']])
+            transaction.commit()
             messages.success(request, 'Book added successfully', 'success')
             return HttpResponseRedirect(reverse("account:profile", args=[user_id]))
     else:

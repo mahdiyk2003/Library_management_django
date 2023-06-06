@@ -77,14 +77,15 @@ class ProfileAvatarEdit(forms.Form):
 class AddBook(forms.ModelForm):
     class Meta:
         model = Book
-        fields = '__all__'
+        fields = ['title', 'category', 'description', 'author', 'quantity']
 
 
 class EditBook(forms.ModelForm):
-    
+
     class Meta:
         model = Book
         fields = ['title', 'author', 'description', 'quantity']
+
 
 class BookImage(forms.Form):
     image_file = forms.ImageField()

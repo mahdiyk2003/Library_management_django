@@ -30,7 +30,7 @@
                                 {% for category in categories %}
                                     <option{% if category.id == book.category%}'selected' {%else%} '' 
                                             {%endif%}
-                                            value="{{ category.id }}">{{ category }}</option>
+                                            value="{{ category.id }}">{{ category.name}}</option>
                                 {% endfor %}
                             </select>
                         </div>
@@ -58,7 +58,7 @@
                         </div>
 
                         <div class="input-group mb-3">
-                            <button type="submit" class="btn btn-danger btn-sm">edit</button>
+                            <button type="submit" class="btn btn-danger w-100 font-weight-bold">edit</button>
                         </div>
                     </div>
                 </form>

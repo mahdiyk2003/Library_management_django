@@ -7,7 +7,7 @@ from django.urls import reverse
 from .models import User
 from book import models as bModels
 from .encrypt_util import *
-from account.forms import AddBook, EditBook, EditUserProfileForm, UserLoginForm, UserRegistrationForm, ChangeUserPassForm, ProfileAvatarEdit
+from account.forms import AddBook, EditBook, EditUserProfileForm, UserLoginForm, UserRegistrationForm, ChangeUserPassForm, ProfileAvatarEdit,BookImage
 
 
 def dictfetchall(cursor):
@@ -292,7 +292,8 @@ def book_edit(request, user_id, book_id):
     categories = bModels.Category.objects.all()
     if request.method == 'POST':
         form = EditBook(request.POST)
-        if form.is_valid():
+        book_form=BookImage(request.POST,request.FILES)
+        if form.is_valid() and book_form.is_valid():
             cd = form.cleaned_data
             book.title = cd['title']
             book.category = bModels.Category.objects.get(
@@ -300,13 +301,15 @@ def book_edit(request, user_id, book_id):
             book.description = cd['description']
             book.author = cd['author']
             book.quantity = cd['quantity']
-            book.thumbnail = cd['thumbnail']
+            img = book_form.cleaned_data.get("image_file")
+            book.thumbnail = img
             book.save()
             messages.success(request, 'Book edited successfully', 'success')
             return HttpResponseRedirect(reverse("account:profile", args=[user_id]))
     else:
         form = EditBook(instance=book)
-    return render(request, 'book_edit.html', {'form': form, 'current_user': current_user, 'borowers': borowers, 'categories': categories, 'book': book})
+        book_form=BookImage()
+    return render(request, 'book_edit.html', {'form': form, 'book_form':book_form,'current_user': current_user, 'borowers': borowers, 'categories': categories, 'book': book})
 
 
 def add_category(request, user_id):

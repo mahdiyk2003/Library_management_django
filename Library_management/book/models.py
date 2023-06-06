@@ -5,7 +5,7 @@ import datetime
 
 
 class Book(models.Model):
-    title = models.CharField(max_length=80, unique=True)
+    title = models.CharField(max_length=80)
     category = models.ForeignKey("Category", on_delete=models.CASCADE)
     description = models.CharField(max_length=500)
     author = models.CharField(max_length=150, default='No Info')

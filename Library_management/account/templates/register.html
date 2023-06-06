@@ -6,7 +6,7 @@
       <hr />
       <form action="{%url 'account:register'  %}" method="post">
         {% csrf_token %} {{form.as_p}}
-        <input type="submit" value="register" />
+        <input type="submit" value="register" class="btn btn-info w-100"/>
       </form>
     </div>
   </div>

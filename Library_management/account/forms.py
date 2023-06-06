@@ -81,6 +81,10 @@ class AddBook(forms.ModelForm):
 
 
 class EditBook(forms.ModelForm):
+    
     class Meta:
         model = Book
-        fields = ['title', 'author', 'description', 'thumbnail', 'quantity']
+        fields = ['title', 'author', 'description', 'quantity']
+
+class BookImage(forms.Form):
+    image_file = forms.ImageField()

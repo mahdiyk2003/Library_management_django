@@ -1,5 +1,5 @@
 {% extends 'base.html' %} {% load static %} {% block categ %}
-<li class="nav-item dropdown">
+<li class="nav-item dropdown mr-3 ml-3">
   <a
     class="nav-link dropdown-toggle"
     href="#"
@@ -32,9 +32,9 @@
   <div class="row mt-4">
     {% for book in books %}
     <div class="col-4 mt-3">
-      <div class="card">
+      <div class="card" style="border-radius: 5px;">
         <img
-          class="card-img-top"
+          class="card-img-top rounded-lg"
           src="/media/{{ book.thumbnail }}"
           width="300"
           height="250"

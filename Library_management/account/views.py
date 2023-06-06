@@ -45,7 +45,10 @@ def login(request):
             cd = form.cleaned_data
             cursor.execute(
                 'SELECT * FROM account_user WHERE email=%s', [cd['email']])
-            user = dictfetchall(cursor)[0]
+            try:
+                user = dictfetchall(cursor)[0]
+            except:
+                user=None
             if user is not None and decrypt(user['password']) == cd['password']:
                 cursor.execute(
                     'UPDATE account_user SET is_authenticated=1 WHERE id=%s', [user['id']])
@@ -55,6 +58,7 @@ def login(request):
             else:
                 messages.error(
                     request, 'username or password is wrong', 'danger')
+                return HttpResponseRedirect(reverse("account:login", args=[]))
     else:
         form = UserLoginForm()
     return render(request, 'login.html', {'form': form})
@@ -69,7 +73,7 @@ def logout(request, user_id):
         'UPDATE account_user SET is_authenticated=0 WHERE id=%s', [user['id']])
     transaction.commit()
     messages.success(request, 'logged out successfully', 'success')
-    return HttpResponseRedirect(reverse("book:home", args=[page_number]))
+    return HttpResponseRedirect(reverse("book:home", args=[user['id']]))
 
 
 def profile(request, id):
@@ -232,7 +236,7 @@ def all_books(request, user_id, book_id=None):
         cursor.execute('DELETE FROM book_book WHERE id=%s', [book_id])
         transaction.commit()
         messages.success(request, 'The book deleted successfuly.', 'success')
-        return HttpResponseRedirect(reverse("account:profile", args=[user_id]))
+        return HttpResponseRedirect(reverse("account:all_books", args=[user_id]))
 
     return render(request, 'book_list.html', context)
 

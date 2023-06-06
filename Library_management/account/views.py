@@ -7,7 +7,7 @@ from django.urls import reverse
 from .models import User
 from book import models as bModels
 from .encrypt_util import *
-from account.forms import AddBook, EditBook, EditUserProfileForm, UserLoginForm, UserRegistrationForm, ChangeUserPassForm, ProfileAvatarEdit,BookImage
+from account.forms import AddBook, EditBook, EditUserProfileForm, UserLoginForm, UserRegistrationForm, ChangeUserPassForm, ProfileAvatarEdit, BookImage
 
 
 def dictfetchall(cursor):
@@ -160,27 +160,6 @@ def edit(request, id):
     return render(request, 'edit.html', {'form': form, 'current_user': user})
 
 
-def change_avatar_(request, id):
-    cursor = connection.cursor()
-    cursor.execute(
-        'SELECT * FROM account_user WHERE id=%s', [id])
-    user = dictfetchall(cursor)[0]
-    if request.method == 'POST':
-        form = ProfileAvatarEdit(request.POST, request.FILES)
-        if form.is_valid():
-            img = form.cleaned_data.get("image_file")
-
-            image = f'uploads/{img.name}'
-            cursor.execute(
-                'UPDATE account_user SET image_file=%s WHERE id=%s', [image, user['id']])
-            transaction.commit()
-
-            return HttpResponseRedirect(reverse("account:info", args=[user['id']]))
-    else:
-        form = ProfileAvatarEdit()
-    return render(request, 'avatar.html', {'form': form, 'current_user': user})
-
-
 def change_avatar(request, id):
     user = get_object_or_404(User, id=id)
     if request.method == 'POST':
@@ -222,14 +201,34 @@ def change_pass(request, id):
 
 
 def all_books(request, user_id, book_id=None):
-    books = bModels.Book.objects.all()
-    current_user = get_object_or_404(User, id=user_id)
+
+    cursor = connection.cursor()
+    cursor.execute(
+        'SELECT * FROM account_user WHERE id=%s', [user_id])
+    current_user = dictfetchall(cursor)[0]
+
+    cursor.execute(
+        'SELECT * FROM book_book')
+
+    books = dictfetchall(cursor)
+
+    cursor.execute('SELECT * FROM book_bookinstance')
+
+    books_insts = dictfetchall(cursor)
+
     context = {
         'current_user': current_user,
         'books': books
     }
     if request.method == 'POST':
-        bModels.Book.objects.get(id=book_id).delete()
+        for book_inst in books_insts:
+            if book_inst['book_id'] == int(book_id):
+                cursor.execute(
+                    'DELETE FROM book_bookinstance WHERE book_id=%s', [book_id])
+                transaction.commit()
+
+        cursor.execute('DELETE FROM book_book WHERE id=%s', [book_id])
+        transaction.commit()
         messages.success(request, 'The book deleted successfuly.', 'success')
         return HttpResponseRedirect(reverse("account:profile", args=[user_id]))
 
@@ -286,38 +285,73 @@ def add_book(request, user_id):
 
 
 def book_edit(request, user_id, book_id):
-    current_user = get_object_or_404(User, id=user_id)
-    book = bModels.Book.objects.get(id=book_id)
-    borowers = bModels.BookInstance.objects.filter(book=book)
-    categories = bModels.Category.objects.all()
+    cursor = connection.cursor()
+    cursor.execute(
+        'SELECT * FROM account_user WHERE id=%s', [user_id])
+    current_user = dictfetchall(cursor)[0]
+
+    cursor.execute('SELECT * FROM book_book WHERE id=%s', [book_id])
+    book = dictfetchall(cursor)[0]
+
+    cursor.execute(
+        'SELECT * FROM book_bookinstance WHERE book_id=%s', [book_id])
+    borowers = dictfetchall(cursor)
+
+    cursor.execute('SELECT * FROM book_category')
+    categories = dictfetchall(cursor)
+
+    bookORM = bModels.Book.objects.get(id=book_id)
+
     if request.method == 'POST':
         form = EditBook(request.POST)
-        book_form=BookImage(request.POST,request.FILES)
+        book_form = BookImage(request.POST, request.FILES)
         if form.is_valid() and book_form.is_valid():
             cd = form.cleaned_data
-            book.title = cd['title']
-            book.category = bModels.Category.objects.get(
-                id=request.POST['category'])
-            book.description = cd['description']
-            book.author = cd['author']
-            book.quantity = cd['quantity']
             img = book_form.cleaned_data.get("image_file")
-            book.thumbnail = img
-            book.save()
+            image = f'uploads/{img.name}'
+            cursor.execute('UPDATE book_book SET title=%s,category_id=%s,description=%s,author=%s,quantity=%s,thumbnail=%s WHERE id=%s', [cd['title'], request.POST['category'],
+                                                                                                                                          cd['description'], cd['author'], cd['quantity'], image, book_id])
+            transaction.commit()
             messages.success(request, 'Book edited successfully', 'success')
             return HttpResponseRedirect(reverse("account:profile", args=[user_id]))
     else:
-        form = EditBook(instance=book)
-        book_form=BookImage()
-    return render(request, 'book_edit.html', {'form': form, 'book_form':book_form,'current_user': current_user, 'borowers': borowers, 'categories': categories, 'book': book})
+        form = EditBook(instance=bookORM)
+        book_form = BookImage()
+    return render(request, 'book_edit.html', {'form': form, 'book_form': book_form, 'current_user': current_user, 'borowers': borowers, 'categories': categories, 'book': book})
 
 
 def add_category(request, user_id):
-    current_user = get_object_or_404(User, id=user_id)
+    cursor = connection.cursor()
+    cursor.execute(
+        'SELECT * FROM account_user WHERE id=%s', [user_id])
+    current_user = dictfetchall(cursor)[0]
+
     if request.method == 'POST':
         name = request.POST['name']
-        category = bModels.Category(name=name)
-        category.save()
+        cursor.execute('''INSERT INTO book_category
+                       (name) VALUES (%s)''', [name])
+        transaction.commit()
         messages.success(request, 'Category added successfully', 'success')
         return HttpResponseRedirect(reverse("account:profile", args=[user_id]))
     return render(request, 'add_category.html', {'current_user': current_user})
+
+
+def change_avatar_(request, id):
+    cursor = connection.cursor()
+    cursor.execute(
+        'SELECT * FROM account_user WHERE id=%s', [id])
+    user = dictfetchall(cursor)[0]
+    if request.method == 'POST':
+        form = ProfileAvatarEdit(request.POST, request.FILES)
+        if form.is_valid():
+            img = form.cleaned_data.get("image_file")
+
+            image = f'uploads/{img.name}'
+            cursor.execute(
+                'UPDATE account_user SET image_file=%s WHERE id=%s', [image, user['id']])
+            transaction.commit()
+
+            return HttpResponseRedirect(reverse("account:info", args=[user['id']]))
+    else:
+        form = ProfileAvatarEdit()
+    return render(request, 'avatar.html', {'form': form, 'current_user': user})
